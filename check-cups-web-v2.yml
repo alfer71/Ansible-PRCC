@@ -1,6 +1,8 @@
 ---
-- name: Check if cups-browsed service is running on all servers
-  hosts: all
+- name: Check and report the status of cups-browsed service across servers
+  hosts: prccnonprodservers
+  remote_user: afernandez
+  become: yes
   gather_facts: no
   tasks:
     - name: Check if cups-browsed service is running
