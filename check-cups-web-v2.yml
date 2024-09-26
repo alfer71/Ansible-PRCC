@@ -1,0 +1,29 @@
+---
+- name: Check if cups-browsed service is running on all servers
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Check if cups-browsed service is running
+      ansible.builtin.systemd:
+        name: cups-browsed
+        state: started
+      register: service_status
+      ignore_errors: yes
+
+    - name: Add server to the running list if service is running
+      set_fact:
+        running_servers: "{{ running_servers | default([]) + [inventory_hostname] }}"
+      when: service_status.status is defined and service_status.status == 'started'
+
+    - name: Add server to the not running list if service is not running or service is not found
+      set_fact:
+        not_running_servers: "{{ not_running_servers | default([]) + [inventory_hostname] }}"
+      when: service_status.status is not defined or service_status.status != 'started'
+
+    - name: Display servers where cups-browsed is running
+      debug:
+        msg: "CUPS Browsed service is running on the following servers: {{ running_servers | default([]) }}"
+
+    - name: Display servers where cups-browsed is not running
+      debug:
+        msg: "CUPS Browsed service is not running on the following servers: {{ not_running_servers | default([]) }}"
