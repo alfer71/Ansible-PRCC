@@ -1,0 +1,31 @@
+---
+- name: Check and report the status of cups-browsed service across servers
+  hosts: prccservers
+  remote_user: afernandez
+  become: yes
+  gather_facts: no
+  tasks:
+    - name: Check the status of cups-browsed service
+      ansible.builtin.systemd:
+        name: cups-browsed
+        state: started
+      register: service_status
+      ignore_errors: yes
+
+    - name: Add server to the running list if service is running
+      set_fact:
+        running_servers: "{{ running_servers | default([]) + [inventory_hostname] }}"
+      when: service_status.status == 'started'
+
+    - name: Add server to the not running list if service is not running
+      set_fact:
+        not_running_servers: "{{ not_running_servers | default([]) + [inventory_hostname] }}"
+      when: service_status.status != 'started'
+
+    - name: Display servers where cups-browsed is running
+      debug:
+        msg: "CUPS Browsed service is running on the following servers: {{ running_servers | default([]) }}"
+
+    - name: Display servers where cups-browsed is not running
+      debug:
+        msg: "CUPS Browsed service is not running on the following servers: {{ not_running_servers | default([]) }}"
