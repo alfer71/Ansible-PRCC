@@ -1,6 +1,6 @@
 ---
 - name: Check if cups-browsed service is running
-  hosts: prccservers
+  hosts: prccnonprodservers
   remote_user: afernandez
   become: yes
   tasks:
