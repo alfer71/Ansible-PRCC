@@ -23,4 +23,5 @@
     - name: Check if service is running or not
       fail:
         msg: "cups-browsed is not running."
-      when: service_status.state != "started" and service_status.failed is not defined
+      when: service_status.state is defined and service_status.state != "started"
+
