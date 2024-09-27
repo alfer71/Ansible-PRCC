@@ -1,6 +1,6 @@
 ---
 - name: Check if cups-browsed service is running
-  hosts: prccnonprodservers
+  hosts: prccservers
   remote_user: afernandez
   become: yes
   tasks:
@@ -13,9 +13,14 @@
 
     - name: Display service status
       debug:
-        msg: "cups-browsed is {{ service_status.state }}"
+        msg: >
+          {% if service_status.failed is defined and service_status.failed %}
+            cups-browsed service not found on this host.
+          {% else %}
+            cups-browsed is {{ service_status.state }}
+          {% endif %}
 
     - name: Check if service is running or not
       fail:
         msg: "cups-browsed is not running."
-      when: service_status.state != "started"
+      when: service_status.state != "started" and service_status.failed is not defined
