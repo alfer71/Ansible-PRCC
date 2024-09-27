@@ -1,0 +1,21 @@
+---
+- name: Check if cups-browsed service is running
+  hosts: prccnonprodservers
+  remote_user: afernandez
+  become: yes
+  tasks:
+    - name: Check the status of cups-browsed service
+      ansible.builtin.systemd:
+        name: cups-browsed
+        state: started
+      register: service_status
+      ignore_errors: yes
+
+    - name: Display service status
+      debug:
+        msg: "cups-browsed is {{ service_status.state }}"
+
+    - name: Check if service is running or not
+      fail:
+        msg: "cups-browsed is not running."
+      when: service_status.state != "started"
