@@ -1,0 +1,22 @@
+---
+- name: Check BigFix service status
+  hosts: prccnonprodservers
+  remote_user: afernandez
+  become: yes
+  become_method: sudo
+  tasks:
+    - name: Check BigFix service status
+      ansible.builtin.command:
+        cmd: "systemctl is-active besclient"
+      register: bigfix_service_status
+      failed_when: false
+
+    - name: Display message if BigFix service is running
+      ansible.builtin.debug:
+        msg: "The BigFix service is running."
+      when: bigfix_service_status.stdout == "active"
+
+    - name: Display message if BigFix service is not running
+      ansible.builtin.debug:
+        msg: "The BigFix service is not running."
+      when: bigfix_service_status.stdout != "active"
