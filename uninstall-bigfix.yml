@@ -1,10 +1,11 @@
 ---
 - name: Uninstall BigFix package on RHEL 8 server
   hosts: prccnonprodservers
-  become: true
+  remote_user: afernandez
+  become: yes
   become_method: sudo
   vars:
-    bigfix_package_name: "bigfix-agent"  # Update this if the package name differs
+    bigfix_package_name: "BESAgent"  # Update this if the package name differs
 
   tasks:
     - name: Check if BigFix package is installed
