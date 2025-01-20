@@ -1,0 +1,35 @@
+---
+- name: Uninstall BigFix package on RHEL 8 server
+  hosts: prccnonprodservers
+  become: true
+  vars:
+    bigfix_package_name: "bigfix-agent"  # Update this if the package name differs
+
+  tasks:
+    - name: Check if BigFix package is installed
+      ansible.builtin.dnf:
+        name: "{{ bigfix_package_name }}"
+        state: present
+      register: bigfix_check
+
+    - name: Uninstall BigFix package if installed
+      ansible.builtin.dnf:
+        name: "{{ bigfix_package_name }}"
+        state: absent
+      when: bigfix_check is changed
+
+    - name: Verify BigFix package removal
+      ansible.builtin.command:
+        cmd: "rpm -q {{ bigfix_package_name }}"
+      register: verify_removal
+      failed_when: "verify_removal.rc == 0"
+      changed_when: false
+
+    - name: Clean up leftover configuration files
+      ansible.builtin.file:
+        path: "/etc/{{ bigfix_package_name }}"
+        state: absent
+
+    - name: Notify about uninstallation status
+      ansible.builtin.debug:
+        msg: "BigFix package uninstalled successfully."
