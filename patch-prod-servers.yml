@@ -36,6 +36,3 @@
       debug:
         msg: "The system {{ inventory_hostname }} is successfully patched to the latest updates"
       when: dnf_update_status is changed
-
-
-dnf remove $(dnf repoquery --installonly --latest-limit=-2 -q)
