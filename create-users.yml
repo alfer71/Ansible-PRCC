@@ -14,7 +14,7 @@
         name: "{{ item }}"
         groups: fullsudo
         append: yes
-        password: "{{ 'Ellucian.1234' | password_hash('sha512') }}"
+        password: "{{ 'Ellucian.1234' | password_hash('sha512', 'passlib') }}"
         update_password: on_create
         state: present
       loop:
