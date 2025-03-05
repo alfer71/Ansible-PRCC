@@ -24,6 +24,8 @@
         - shernandezji
 
     - name: Force users to change password upon first login
+      become: yes
+      become_user: root
       command: chage -d 0 "{{ item }}"
       loop:
         - jdemelo
