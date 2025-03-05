@@ -11,6 +11,7 @@
 
     - name: Create users and add to fullsudo group
       become: yes
+      become_user: root
       user:
         name: "{{ item }}"
         groups: fullsudo
