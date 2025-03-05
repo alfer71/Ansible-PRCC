@@ -10,6 +10,7 @@
         state: present
 
     - name: Create users and add to fullsudo group
+      become: yes
       user:
         name: "{{ item }}"
         groups: fullsudo
