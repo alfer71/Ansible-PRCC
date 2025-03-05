@@ -1,0 +1,28 @@
+---
+- name: Create users and configure sudo access
+  hosts: prccservers
+  remote_user: afernandez
+  become: yes
+  tasks:
+    - name: Ensure fullsudo group exists
+      group:
+        name: fullsudo
+        state: present
+
+    - name: Create users and add to fullsudo group
+      user:
+        name: "{{ item }}"
+        groups: fullsudo
+        append: yes
+        password: "{{ 'Ellucian.1234' | password_hash('sha512') }}"
+        update_password: on_create
+        state: present
+      loop:
+        - jdemelo
+        - shernandezji
+
+    - name: Force users to change password upon first login
+      command: chage -d 0 "{{ item }}"
+      loop:
+        - jdemelo
+        - shernandezji
