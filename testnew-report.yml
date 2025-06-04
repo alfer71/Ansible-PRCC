@@ -1,0 +1,127 @@
+---
+- name: Gather detailed information from RHEL8 server and create HTML spreadsheet report
+  hosts: prccprodservers
+  remote_user: afernandez
+  become: yes
+  become_method: sudo
+  vars:
+    dest_base_path: "/tmp/html-report/prcc"
+    src_path: "/tmp/server_info"
+    current_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+
+  tasks:
+    - name: Ensure output directory exists on remote
+      file:
+        path: "{{ src_path }}"
+        state: directory
+        mode: '0755'
+
+    - name: Start HTML table report
+      copy:
+        content: "<html><head><title>System Report</title></head><body><table border='1'>" > {{ src_path }}/report.html
+        dest: "{{ src_path }}/report.html"
+
+    - name: Add hostname and IP
+      shell: |
+        echo "<tr><td>Hostname</td><td>$(hostname)</td></tr>" >> {{ src_path }}/report.html
+        echo "<tr><td>IP Address</td><td>$(hostname -I)</td></tr>" >> {{ src_path }}/report.html
+
+    - name: Add uptime
+      shell: |
+        echo "<tr><td>Uptime</td><td>$(uptime)</td></tr>" >> {{ src_path }}/report.html
+
+    - name: Add number of processors
+      shell: |
+        echo "<tr><td>Processors</td><td>$(nproc)</td></tr>" >> {{ src_path }}/report.html
+
+    - name: Add memory info
+      shell: |
+        mem=$(free -h | awk '/Mem:/ {print $2 " total, " $3 " used, " $4 " free"}')
+        echo "<tr><td>Memory</td><td>${mem}</td></tr>" >> {{ src_path }}/report.html
+
+    - name: Add kernel version
+      shell: |
+        echo "<tr><td>Kernel Version</td><td>$(uname -r)</td></tr>" >> {{ src_path }}/report.html
+
+    - name: Add Datadog agent status
+      shell: |
+        systemctl is-active datadog-agent &>/dev/null && echo "<tr><td>Datadog Agent</td><td>Installed and Running</td></tr>" || echo "<tr><td>Datadog Agent</td><td>Not Found</td></tr>"
+        >> {{ src_path }}/report.html
+
+    - name: Add Netdata agent status
+      shell: |
+        systemctl is-active netdata &>/dev/null && echo "<tr><td>Netdata Agent</td><td>Installed and Running</td></tr>" || echo "<tr><td>Netdata Agent</td><td>Not Found</td></tr>"
+        >> {{ src_path }}/report.html
+
+    - name: Check selected active services
+      shell: |
+        for svc in nfs-server smb cups cups.service auditd kdump chronyd netdata postfix \
+                   rpc-statd-notify rpcbind rsyslog snmpd sshd systemd-journald winbind; do
+          state=$(systemctl is-active $svc 2>/dev/null)
+          desc=$(systemctl show -p Description $svc 2>/dev/null | cut -d= -f2)
+          [[ "$state" == "active" ]] && echo "<tr><td>$svc</td><td>${desc}</td></tr>" || :
+        done >> {{ src_path }}/report.html
+
+    - name: List open ports with service description
+      shell: |
+        echo "<tr><td>Open Ports</td><td><pre>" >> {{ src_path }}/report.html
+        nmap -sT -p- --min-rate=1000 -T4 localhost | grep -E "open" >> {{ src_path }}/report.html
+        echo "</pre></td></tr>" >> {{ src_path }}/report.html
+
+    - name: Add filesystem info
+      shell: |
+        echo "<tr><td>Filesystems</td><td><pre>" >> {{ src_path }}/report.html
+        df -h --exclude-type=tmpfs --exclude-type=devtmpfs --exclude-type=nfs --exclude-type=cifs >> {{ src_path }}/report.html
+        echo "</pre></td></tr>" >> {{ src_path }}/report.html
+
+    - name: Add NFS/CIFS mounts
+      shell: |
+        echo "<tr><td>NFS/CIFS Mounts</td><td><pre>" >> {{ src_path }}/report.html
+        df -hT | grep -E 'nfs|cifs' || echo "No NFS/CIFS mounts found" >> {{ src_path }}/report.html
+        echo "</pre></td></tr>" >> {{ src_path }}/report.html
+
+    - name: Add crontab jobs
+      shell: |
+        echo "<tr><td>Crontab</td><td><pre>" >> {{ src_path }}/report.html
+        crontab -l || echo "No crontab for root" >> {{ src_path }}/report.html
+        echo "</pre></td></tr>" >> {{ src_path }}/report.html
+
+    - name: Add top memory consumers
+      shell: |
+        echo "<tr><td>Top Memory Usage</td><td><pre>" >> {{ src_path }}/report.html
+        ps aux --sort=-%mem | head -n 8 >> {{ src_path }}/report.html
+        echo "</pre></td></tr>" >> {{ src_path }}/report.html
+
+    - name: Add top CPU consumers
+      shell: |
+        echo "<tr><td>Top CPU Usage</td><td><pre>" >> {{ src_path }}/report.html
+        ps aux --sort=-%cpu | head -n 8 >> {{ src_path }}/report.html
+        echo "</pre></td></tr>" >> {{ src_path }}/report.html
+
+    - name: Add last logins
+      shell: |
+        echo "<tr><td>Last 7 Logins</td><td><pre>" >> {{ src_path }}/report.html
+        last -n 7 >> {{ src_path }}/report.html
+        echo "</pre></td></tr>" >> {{ src_path }}/report.html
+
+    - name: Check last patch info
+      shell: |
+        echo "<tr><td>Last Patch Info</td><td><pre>" >> {{ src_path }}/report.html
+        dnf history | grep update >> {{ src_path }}/report.html
+        echo "</pre></td></tr>" >> {{ src_path }}/report.html
+
+    - name: Close HTML table and body
+      shell: |
+        echo "</table></body></html>" >> {{ src_path }}/report.html
+
+    - name: Create local directory with the current date
+      file:
+        path: "{{ dest_base_path }}/{{ current_date }}"
+        state: directory
+        mode: '0755'
+
+    - name: Fetch the report from the remote host
+      ansible.builtin.fetch:
+        src: "{{ src_path }}/report.html"
+        dest: "{{ dest_base_path }}/{{ current_date }}/{{ inventory_hostname }}_report.html"
+        flat: yes
