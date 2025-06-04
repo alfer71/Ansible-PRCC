@@ -1,6 +1,6 @@
 ---
 - name: Gather detailed information from RHEL8 server and create HTML spreadsheet report
-  hosts: prccprodservers
+  hosts: prccnonprodservers
   remote_user: afernandez
   become: yes
   become_method: sudo
