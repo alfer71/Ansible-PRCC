@@ -18,7 +18,7 @@
 
     - name: Start HTML table report
       copy:
-        content: "<html><head><title>System Report</title></head><body><table border='1'>" > {{ src_path }}/report.html
+        content: "<html><head><title>System Report</title></head><body><table border='1'>"
         dest: "{{ src_path }}/report.html"
 
     - name: Add hostname and IP
