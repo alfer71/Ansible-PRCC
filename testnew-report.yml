@@ -9,22 +9,6 @@
     src_path: "/tmp/server_info"
     current_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
 
-
-
-
-
-
----
-- name: Gather detailed information from RHEL8 server and create HTML spreadsheet report
-  hosts: prccprodservers
-  remote_user: afernandez
-  become: yes
-  become_method: sudo
-  vars:
-    dest_base_path: "/tmp/html-report/prcc"
-    src_path: "/tmp/server_info"
-    current_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
-
   tasks:
     - name: Ensure output directory exists on remote
       file:
