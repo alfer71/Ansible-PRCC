@@ -16,7 +16,7 @@
         state: directory
         mode: '0755'
 
-    - name: Start HTML report with horizontal layout
+    - name: Start HTML report with horizontal layout and wrapped cells
       copy:
         content: |
           <html>
@@ -26,17 +26,21 @@
               table {
                 width: 100%;
                 border-collapse: collapse;
+                table-layout: fixed;
               }
               th, td {
                 border: 1px solid #000;
-                padding: 8px;
+                padding: 6px;
                 text-align: left;
                 vertical-align: top;
                 white-space: pre-wrap;
                 word-wrap: break-word;
+                font-family: monospace;
+                font-size: 12px;
               }
               th {
-                background-color: #f2f2f2;
+                background-color: #2a5d78;
+                color: #ffffff;
               }
             </style>
           </head>
@@ -52,8 +56,9 @@
             <th>Datadog</th>
             <th>Netdata</th>
             <th>Open Ports</th>
-            <th>Filesystems</th>
-            <th>NFS/CIFS</th>
+            <th>Local Filesystems</th>
+            <th>NFS and CIFS mounts</th>
+            <th>Firewall status</th>
             <th>Crontab</th>
             <th>Top Memory</th>
             <th>Top CPU</th>
@@ -65,34 +70,28 @@
 
     - name: Gather system information and append to HTML row
       shell: |
-        echo -n "<td>$(hostname)</td>" >> {{ src_path }}/report.html
-        echo -n "<td>$(hostname -I)</td>" >> {{ src_path }}/report.html
-        echo -n "<td>$(uptime)</td>" >> {{ src_path }}/report.html
-        echo -n "<td>$(nproc)</td>" >> {{ src_path }}/report.html
-        mem=$(free -h | awk '/Mem:/ {print $2 " total, " $3 " used, " $4 " free"}')
-        echo -n "<td>${mem}</td>" >> {{ src_path }}/report.html
-        echo -n "<td>$(uname -r)</td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>$(hostname)</pre></td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>$(hostname -I)</pre></td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>$(uptime)</pre></td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>$(nproc)</pre></td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>$(free -h)</pre></td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>$(uname -r)</pre></td>" >> {{ src_path }}/report.html
         datadog=$(systemctl is-active datadog-agent &>/dev/null && echo "Running" || echo "Not Found")
-        echo -n "<td>${datadog}</td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>${datadog}</pre></td>" >> {{ src_path }}/report.html
         netdata=$(systemctl is-active netdata &>/dev/null && echo "Running" || echo "Not Found")
-        echo -n "<td>${netdata}</td>" >> {{ src_path }}/report.html
-        ports=$(nmap -sT -p- --min-rate=1000 -T4 localhost | grep -E "open")
-        echo -n "<td>${ports}</td>" >> {{ src_path }}/report.html
-        fs=$(df -h --exclude-type=tmpfs --exclude-type=devtmpfs --exclude-type=nfs --exclude-type=cifs)
-        echo -n "<td>${fs}</td>" >> {{ src_path }}/report.html
-        nfscifs=$(df -hT | grep -E 'nfs|cifs')
-        [[ -z "$nfscifs" ]] && nfscifs="No NFS/CIFS" 
-        echo -n "<td>${nfscifs}</td>" >> {{ src_path }}/report.html
-        crontab=$(crontab -l 2>/dev/null || echo "No crontab")
-        echo -n "<td>${crontab}</td>" >> {{ src_path }}/report.html
-        topmem=$(ps aux --sort=-%mem | head -n 8)
-        echo -n "<td>${topmem}</td>" >> {{ src_path }}/report.html
-        topcpu=$(ps aux --sort=-%cpu | head -n 8)
-        echo -n "<td>${topcpu}</td>" >> {{ src_path }}/report.html
-        logins=$(last -n 7)
-        echo -n "<td>${logins}</td>" >> {{ src_path }}/report.html
-        patch=$(dnf history | grep update)
-        echo "<td>${patch}</td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>${netdata}</pre></td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>$(nmap -sT -p- --min-rate=1000 -T4 localhost | grep -E 'open')</pre></td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>$(df -h --exclude-type=tmpfs --exclude-type=devtmpfs)</pre></td>" >> {{ src_path }}/report.html
+        nfs=$(df -hT | grep -E 'nfs|cifs')
+        [[ -z "$nfs" ]] && nfs="No NFS or CIFS mounts"
+        echo -n "<td><pre>${nfs}</pre></td>" >> {{ src_path }}/report.html
+        fw=$(firewall-cmd --state &>/dev/null && firewall-cmd --list-all || echo "Firewall is not running")
+        echo -n "<td><pre>${fw}</pre></td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>$(crontab -l 2>/dev/null || echo 'No crontab')</pre></td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>$(ps aux --sort=-%mem | head -n 8)</pre></td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>$(ps aux --sort=-%cpu | head -n 8)</pre></td>" >> {{ src_path }}/report.html
+        echo -n "<td><pre>$(last -n 7)</pre></td>" >> {{ src_path }}/report.html
+        echo "<td><pre>$(dnf history | grep update)</pre></td>" >> {{ src_path }}/report.html
 
     - name: Close HTML table and body
       shell: |
@@ -109,3 +108,4 @@
         src: "{{ src_path }}/report.html"
         dest: "{{ dest_base_path }}/{{ current_date }}/{{ inventory_hostname }}_report.html"
         flat: yes
+
