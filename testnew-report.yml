@@ -9,6 +9,22 @@
     src_path: "/tmp/server_info"
     current_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
 
+
+
+
+
+
+---
+- name: Gather detailed information from RHEL8 server and create HTML spreadsheet report
+  hosts: prccprodservers
+  remote_user: afernandez
+  become: yes
+  become_method: sudo
+  vars:
+    dest_base_path: "/tmp/html-report/prcc"
+    src_path: "/tmp/server_info"
+    current_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+
   tasks:
     - name: Ensure output directory exists on remote
       file:
@@ -31,6 +47,9 @@
                 border: 1px solid #000;
                 padding: 8px;
                 text-align: left;
+                vertical-align: top;
+                white-space: pre-wrap;
+                word-wrap: break-word;
               }
               th {
                 background-color: #f2f2f2;
@@ -73,23 +92,23 @@
         echo -n "<td>${datadog}</td>" >> {{ src_path }}/report.html
         netdata=$(systemctl is-active netdata &>/dev/null && echo "Running" || echo "Not Found")
         echo -n "<td>${netdata}</td>" >> {{ src_path }}/report.html
-        ports=$(nmap -sT -p- --min-rate=1000 -T4 localhost | grep -E "open" | tr '\n' ' ')
-        echo -n "<td><pre>${ports}</pre></td>" >> {{ src_path }}/report.html
-        fs=$(df -h --exclude-type=tmpfs --exclude-type=devtmpfs --exclude-type=nfs --exclude-type=cifs | tr '\n' ' ')
-        echo -n "<td><pre>${fs}</pre></td>" >> {{ src_path }}/report.html
-        nfscifs=$(df -hT | grep -E 'nfs|cifs' | tr '\n' ' ')
+        ports=$(nmap -sT -p- --min-rate=1000 -T4 localhost | grep -E "open")
+        echo -n "<td>${ports}</td>" >> {{ src_path }}/report.html
+        fs=$(df -h --exclude-type=tmpfs --exclude-type=devtmpfs --exclude-type=nfs --exclude-type=cifs)
+        echo -n "<td>${fs}</td>" >> {{ src_path }}/report.html
+        nfscifs=$(df -hT | grep -E 'nfs|cifs')
         [[ -z "$nfscifs" ]] && nfscifs="No NFS/CIFS" 
-        echo -n "<td><pre>${nfscifs}</pre></td>" >> {{ src_path }}/report.html
+        echo -n "<td>${nfscifs}</td>" >> {{ src_path }}/report.html
         crontab=$(crontab -l 2>/dev/null || echo "No crontab")
-        echo -n "<td><pre>${crontab}</pre></td>" >> {{ src_path }}/report.html
-        topmem=$(ps aux --sort=-%mem | head -n 8 | tr '\n' ' ')
-        echo -n "<td><pre>${topmem}</pre></td>" >> {{ src_path }}/report.html
-        topcpu=$(ps aux --sort=-%cpu | head -n 8 | tr '\n' ' ')
-        echo -n "<td><pre>${topcpu}</pre></td>" >> {{ src_path }}/report.html
-        logins=$(last -n 7 | tr '\n' ' ')
-        echo -n "<td><pre>${logins}</pre></td>" >> {{ src_path }}/report.html
-        patch=$(dnf history | grep update | tr '\n' ' ')
-        echo "<td><pre>${patch}</pre></td>" >> {{ src_path }}/report.html
+        echo -n "<td>${crontab}</td>" >> {{ src_path }}/report.html
+        topmem=$(ps aux --sort=-%mem | head -n 8)
+        echo -n "<td>${topmem}</td>" >> {{ src_path }}/report.html
+        topcpu=$(ps aux --sort=-%cpu | head -n 8)
+        echo -n "<td>${topcpu}</td>" >> {{ src_path }}/report.html
+        logins=$(last -n 7)
+        echo -n "<td>${logins}</td>" >> {{ src_path }}/report.html
+        patch=$(dnf history | grep update)
+        echo "<td>${patch}</td>" >> {{ src_path }}/report.html
 
     - name: Close HTML table and body
       shell: |
